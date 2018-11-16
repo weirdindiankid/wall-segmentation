@@ -1,0 +1,33 @@
+\chapter{Requirements}
+\section{Target}
+The goals of our project are mentioned in the following section. Due to the fact that those floor plans are drawn in a different style depending on who the architect is, we are going to introduce certain requirements to be able to process those plans.
+\\\\
+Basic requirements are:
+\begin{itemize}
+	\item The walls on the floor plan are expected to be the thickest line on the plan (can also be alot of lines, which in combination make the line the thickest).
+	\item All are connected rectangular to adjacent walls.	
+\end{itemize}
+
+\noindent Those points above provide a baseline for the following requirements, which should provide a solution that can be achieved in the given time.
+
+\begin{enumerate}
+\item Reading DWG/FXF or images as input.
+\item Room polygon recognition in floor plans.
+\item Room polygon export for calculation software.
+\item Manual edit possibility of recognised rooms.
+\item Confidence measurement and warning system.
+\item Basic zone recognition.
+\item Faster work-process (measurement by metric in section \ref{sec:metric})
+\end{enumerate}
+
+\section{Optional}
+If there is enough time we have plans to add further goals to our list.
+\begin{enumerate}
+\item Object recognition in floor plans.
+\item Handle non-rectangular rooms.
+\item Find walls on a different pattern then it being the thickest line on the floor plan.
+\end{enumerate}
+
+\section{Work Speed Metric}
+\label{sec:metric}
+The work speed metric is measured by the amount of clicks which are needed to define the polygons of a room.

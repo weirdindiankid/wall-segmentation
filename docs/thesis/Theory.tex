@@ -1,0 +1,331 @@
+\section{Theory}
+\subsection{Information Segmentation}
+\subsubsection{Erosion and Dilation}
+\label{subsubsec:Erosion and Dilation}
+In our project we need dilation to strengthen small features that we want highlighted, as well as to get rid of small details in the picture itself. We use it in early preprocessing, because together with the erosion it helps clean up pictures, in oder to further process them without too many interfering objects in the image. The main usage is to extract an image that features all the walls and has as few other lines on it as possible \citep{burger_burge_2016}.
+
+For our project we use the binary grayscale erosion~\eqref{eq:GrayscaleErosion}.
+The erosion uses the following principle to work.
+
+
+\begin{equation}\label{eq:GrayscaleErosion}A \ominus B = \{ z\in E | B \subseteq A \}\end{equation}  
+\begin{equation}\label{eq:StructuringElement}where: B_{z} = \{b+z | b \in B\} with \forall z \in E \end{equation}
+
+$A$ is a binary image in the Euclidean space or an integer grid. The erosion is done with the structuring element $B$~\eqref{eq:StructuringElement} on the image $A$. The structuring element has to be a subset or equal to $A$, otherwise there will be no erosion. The mask $B$ will be applied to all pixels possible, if the mask fits on the center pixel of $A$, the value will be retained. Otherwise it will get deleted. This means, that only when $B$ is completely contained in $A$, values of pixels are retained.
+
+Binary dilation uses the exact same process. The only difference compared to the erosion is, that the deletion of the pixel will not be setting pixel values to white 1, but to black 0. Both of those processes are inherently the same and can be summed up under the term morphological operation. Morphological operations are altering the image with a mask, as we did here for erosion and dilation.
+
+\subsubsection{Geodesic Dilation}
+\label{subsubsec:GeodesicDilation}
+
+Geodesic dilation is an iterative morphological transformation for the reconstruction of marked foreground objects. Instead of the normal dilation (Section~\ref{subsubsec:Erosion and Dilation}) it uses a marker image $F$ which defines the starting points of the dilation, a mask image $G$ which defines the constraints of the dilation and a structuring element $B$ which describes the dilation itself.
+
+For example the algorithm is used to reconstruct the area of the brightest points within a distance transformed image (Section~\ref{subsubsec:Distance transformation}). We used this for extracting and enhancing the room center points which then are used as marker points of the watershed marker image (Section~\ref{subsub:watershed}).
+
+The geodesic dilation is defined as $D_{G}^{(n)}(F)$ where n is the iteration size and $F$ the marker with respect to the mask $G$. As a precondition $F$ is a subset of (or is included in) $G$: $F \subseteq G$.
+
+There is no implementation in \gls{gloss:OpenCV} of this algorithm, so we did it ourselves. Following is a short overview of our implementation.
+	
+\begin{equation} \label{eq:geodesic_dilation_iteration}
+\begin{gathered}
+D_{G}^{(0)}(F) = F
+\\
+D_{G}^{(1)}(F) = (F \oplus B) \cap G)
+\\
+D_{G}^{(n)}(F) = D_{G}^{(1)}(D_{G}^{(n-1)}(F))
+\end{gathered}
+\end{equation}
+
+Where:
+\begin{itemize}[label=]
+    \item $F$: is the marker image
+    \item $G$: is the mask image
+    \item $B$: is the structuring element
+    \item $n$: is the iteration index
+\end{itemize}
+
+As seen in equation~\eqref{eq:geodesic_dilation_iteration}, a geodesic dilation with zero iterations is equal to the initial marker image. In the first iteration the marker image $F$ is dilated with the structural element $B$ and the result of that dilation is intersected with the mask image. This intersection limits the dilation to the marker constraints. After one iteration the next iteration uses the result of the last iteration as new marker image $F$.
+
+The iteration stops as soon as the the difference (absolute array norm) between $F^{n}$ and $F^{n-1}$ becomes less then $\epsilon$ which in our case is 0.0001.
+
+\subsubsection{Distance transformation}
+\label{subsubsec:Distance transformation}
+As well as the erosion and dilation, the distance transformation is a morphological operation. In our project it serves the purpose to find basins for the watershed algorithm. This is used to define the foreground picture. We will explain this further in the wathershed discussion.
+It is used after preprocessing to find the center of what is supposed to be rooms. This algorithm is only used in combination with the watershed.
+
+The algorithm that OpenCV uses is called cvDistTransform and uses an euclidean distance to calculate the output image. The input for this transformation is a binary image $I(u,v) = I(x)$ which will be separated into a foreground \eqref{eq:Foreground} and background \eqref{eq:Background} image.
+\begin{equation}\label{eq:Foreground}FG(I) = {x | I(x) = 1}\end{equation}
+\begin{equation}\label{eq:Background}BG(I) = {x | I(x) = 0}\end{equation}
+The formula for the distance transformation of $I$, $D(x)$ itself is defined as:
+\[D(x) :=\min_{x' \in FG(I)} dist(x,x') \]
+It applies to any pixel $x = (u,v)$ of the input image. If the pixel is part of the foreground image $FG(I)$ then the result of the transformation $D(x)$ is zero. As said above, the distance formula $dist(x,x')$ is the euclidean distance \eqref{eq:EuclideanDistance} (also called $L_{2}-Norm$) between two pixels.
+\begin{equation}\label{eq:EuclideanDistance}dist(x,x') = ||x - x'|| = \sqrt{(u - u')^2 + (v - v')^2}\end{equation}
+
+Since the exact calculation with the euclidean distance takes a lot of computational power openCV uses the Chamfer-Algorithm instead. This algorithm runs two masks over the image. The first mask $M_{L}$ \eqref{eq:LeftMask} is run in a diagonal manner over the image, starting in the top left corner of the image. The second mask $M_{R}$ \eqref{eq:RightMask} does the same in reverse starting at the bottom right corner. Those masks are a matrix that represent the euclidean distance between the center and the pixels around it. Each mask only changes the pixels in the direction they are run through the image \citep{burger_burge_2016}. As a result, the masks look similar to the following ones:
+\begin{equation}\label{eq:LeftMask} M_{L} = \begin{bmatrix} . & . & .\\ . & x & m_1 \\ m_2 & m_1 & m_2 \end{bmatrix}\end{equation}
+\begin{equation}\label{eq:RightMask}M_{R} = \begin{bmatrix} m2 & m1 & m2 \\ m1 & x & . \\ . & . & . \end{bmatrix} \end{equation}
+
+This all leads to the resulting effect shown in the image below (\citep{szeliski_2011} and \citep{distancetransform}).
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{dist_transform1}
+	\caption{This image shows the distance transformation of the plan AN\_1.}
+	\label{dist_transf_theory}
+\end{figure}
+
+
+\subsubsection{Find contours}
+\label{sub:FindContoursTheory}
+The find-contours algorithm was used several times during the implementation of this project for different uses. Those uses are described in the \textit{Implementation} (Section~\ref{sub:Implemenation}) part of this document. What the algorithm does is that it finds the borders or the contour of different components in an image. The algorithm used by OpenCv was first described by Suzuki and Abe \citep{suzuki_abe_1985}. This will be a short description of what the algorithm does, as the algorithm itself is quite complicated and can be reviewed completely in their paper.
+
+The algorithm searches for borders in an image. A border is for example on a binary image where the pixel value changes from 0 to 1 or the other way. The algorithm defines two components that are possible. There are borders, that is where the value changes. Then there are holes, these are the spaces between the borders as well as the background.
+
+The algorithm searches for borders on the images. It starts at the border of the image and goes inwards. As soon as it meets a pixel that is part of a border it stops and assigns this border a uniquely identifiable number. This marks it as a border. Each found border will also be assigned a parent, this is the border that encloses this border. This will define a hierarchy of all borders. The algorithm then follows the detected border and sets all pixels that are part of it to the same number. This will be repeated until all pixels of the image are visited and all borders are found.
+
+This is a very simplistic explanation of what the algorithm does. The whole algorithm is described and proved in the work of Suzuki and Abe \citep{suzuki_abe_1985} for anyone interested in the exact algorithm.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.4\textwidth]{suzuki_abe}
+	\caption{The representation of borders in an example image in the paper of Suzuki and Abe. The value represent the different borders of connected pixels.}
+	\label{suzuki_abe}
+\end{figure}
+
+
+\subsubsection{Harris corner detection}
+\label{subsubsec:HarrisCornerDetection}
+The corner detection algorithm is used to find corners in an image that contains mostly walls. Its purpose is to find the edges of all walls and therefore provide important information for the door gap closing algorithm. Why this information is needed will be explained in the section about this door gap closing algorithm.
+This project uses the Harris corner algorithm due to its reliability, simplicity in implementation and the good results we got after the first uses. The algorithm itself is implemented by OpenCv.
+The idea of the algorithm is that there are edges wherever the gradient of the image function is high for more than one direction.
+First it calculates the basic partial derivatives of the image function $I_{x}(u,v)$ in horizontal and vertical direction. This is done for every position in the image $(u,v)$.
+\begin{equation}A(u,v) = I_{x}^2(u,v)\end{equation}
+\begin{equation}B(u,v) = I_{y}^2(u,v)\end{equation}
+\begin{equation}C(u,v) = I_{x}^2(u,v) * I_{y}^2(u,v)\end{equation}
+
+All of those elements will be part of a local structure matrix M.
+\begin{equation}M = \begin{pmatrix} A & C \\ C & B \end{pmatrix}\end{equation}
+Afterwards, all three scalar fields will be smoothed with a linear Gaussian filter and be represented as a Matrix $\bar{M}$.
+The two eigenvalues of the Matrix $\bar{M}$
+\begin{equation}\lambda_{1,2} = \dfrac{trace(\bar{M})}{2} \pm \sqrt{(\dfrac{trace(\bar{M})}{2})^2 - det(\bar{M})} \end{equation}
+are positive and contain important information about the local structure. In a area with no corners $\bar{M} = 0$  as well as the two eigenvalues $\lambda_1 = \lambda_2 = 0$. To find a corner there needs to be a strong edge in the main direction (bigger eigenvalue) as well as in the direction of its normal (smaller eigenvalue). 
+To find the corner strength itself the Harris corner detection uses the function 
+\begin{equation}Q(u,v) := det(\bar{M}(u,v)) - \alpha * (trace(\bar{M}(u,v)))^2\end{equation}
+whereas the parameter $\alpha$ defines the sensitivity of the detector. A candidate for a corner is found when
+$Q(u,v) > t_H$
+with the threshold $t_{H}$ being around 10 000 to 1 000 000. To find the exact corner it finds groups of candidates that are close to each other and all are eliminated but the best candidate.
+
+\subsubsection{Point clustering}
+\label{sec:PointClustering}
+Due the fact, that the corner detection (Section~\ref{subsub:CornerDetection}) sometimes detects too many points at a wall corner, the aim of this algorithm is to create a sparse point group. This algorithm assigns a list of points into groups and combines them together to one single point, which represents the average position of all points in the group (Figure~\ref{fig:HCPointClustering}).
+
+\begin{figure}[h!]
+	\centering
+	\subfloat[Multiple points at wall corner]{\includegraphics[width=0.4\textwidth]{hc_overdetection}\label{fig:hc_overdetection}}
+	\hfill
+	\subfloat[Averaged point at wall corner]{\includegraphics[width=0.4\textwidth]{clustered_hc_detection}\label{fig:clustered_hc_detection}}
+	\caption{Harris Corner detection before point clustering (a) and after point clustering (b).}
+	\label{fig:HCPointClustering}
+\end{figure}
+
+The algorithm takes a list of points $M$ in $R^2$ and a maximal distance $d$ as input and returns a list of grouped points. If the $L^2$ distance between two points, is less then the maximal distance $d$, the points are adjacent and assigned to the same group.
+
+For each unprocessed point in the group, the algorithm is repeated to avoid a greedy behaviour of the algorithm.
+
+A single point without any adjacent remains as it is (Figure~\ref{fig:point_clustering_single}). Multiple points are combined into one single point (Figure~\ref{fig:point_clustetring_multiple_close}). Sometimes it leads to large groups, because points which are not adjacent, can be assigned to the same group. In figure~\ref{fig:point_clustering_multiple_spread}, that case is visualised, where multiple points are assigned to the same group, which are further away then the maximal distance $d$.
+
+\begin{figure}[h!]
+	\centering
+	\subfloat[Single point]{\includegraphics[width=0.3\textwidth]{point_clustering_single}\label{fig:point_clustering_single}}
+	\hfill
+	\subfloat[Multiple points]{\includegraphics[width=0.3\textwidth]{point_clustetring_multiple_close}\label{fig:point_clustetring_multiple_close}}
+	\hfill
+	\subfloat[Multiple spread points]{\includegraphics[width=0.3\textwidth]{point_clustering_multiple_spread}\label{fig:point_clustering_multiple_spread}}
+	\caption{Different point clustering cases.}
+	\label{fig:PointClusteringCases}
+\end{figure}
+
+To minimise the group to one single point, which defines the center of the corner, the algorithm uses the average center of all points in the group ~\eqref{eq:PointAverage}.
+
+
+\begin{equation} \label{eq:PointAverage}
+\begin{gathered}
+\bar{X} = \sum_{i=1}^{N}X_{i}/N
+\\
+\bar{Y} = \sum_{i=1}^{N}Y_{i}/N
+\end{gathered}
+\end{equation}
+
+
+\subsubsection{Convex hull}
+\label{sub:ConvexHull}
+Finding the convex hull of a set of points is a good way for this project to find the outer points of our wall which encloses the whole building. The convex hull is the smallest convex set of points that contains all points given in a Euclidean space.
+
+The convex hull of a set of points X \begin{equation}conv X \coloneqq \underset{X \subseteq K \subseteq V, K convex}{\bigcap} K  \end{equation} is defined as the intersection of all supersets of X. It can also be described as the set of all limited convex combinations:
+
+\begin{equation}conv X = \{ \sum_{i=1}^{n}\alpha_{i} * x_{i} \mid x_{i} \in X, n \in \mathbb{N}, \sum_{i=1}^{n} \alpha_i = 1, \alpha_i \geq 0  \}]\end{equation}
+
+There are several known algorithms that implement this problems. Examples of those are the Graham-Scan algorithm with a complexity of  $\mathcal{O}(n log n)$ or the Jarvis-March-algorithm with the complexity of $\mathcal{O}(n*k)$ where k is the number of points on the hull itself.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.4\textwidth]{convex_hull}
+	\caption{Example image of a convex hull. The black line around the point-set shows that start of the algorithm as it is closing around all the outer points until  being the convex hull (blue).}
+	\label{fig:convex_hull}
+\end{figure}
+
+\subsubsection{Door gap closing algorithm}
+\label{sec:DoorGapAlgorithm}
+
+The cascade door training algorithm has found the rectangles that represent the doors. What is needed in the end though, is not the door itself, but the space inbetween the two walls that the door connects. This is so that we can separate the different rooms that have doors in-between.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.4\textwidth]{door_closing}
+	\caption{This is an image after being processed by the harris corner detection. All white pixels are part of a corner. The points $A$, $B$, $C$ and $D$ will be part of a found door as they create a rectangle. Points E and F will be left out.}
+	\label{fig:door_closing}
+\end{figure}
+
+This algorithm combines the edges that have been found with the Harris-Corner detection and the doors from the cascade door algorithm. It uses a heuristic that works as following: The door algorithm provides four points that mark the edge of the recognized door and build a rectangle (Figure~\ref{fig:door_closing}).
+
+Added to the rectangle is  a threshold in all directions, in which the algorithm searches for edges. The idea is that due to the structure of walls, there will be a rectangle made out of four edge points inside the door area, that represents the space inbetween the walls. It is expected to only find one rectangle, due to the fact that it makes no sense to have a wall go through a door. As well as the fact that there should be no further lines because it a cleaned up image and any other line except the walls should not be in that image.
+To find the rectangle it connects two edges and calculates the angle compared to the x-Axis for all pairs of edges available. Now all the angles get compared to each other. If two edges $AB$ and $CD$ have a similar angle there will be another comparison for the angles between $AC$ and $BD$ or $AD$ and $BC$. If one of those two is also of a similar angel, we then need to prove that two lines that build a corner have an angle of 90 degree between them. If the opposing lines are all parallel and the angle of one corner is 90 degree we can assume that all other angles have to be 90 degree too and it is therefore a rectangle. 
+
+\pagebreak
+\subsection{Structural Analysis}
+
+\subsubsection{ORB algorithm}
+\label{sub:ORBAlgorithm}
+The algorithm \acrfull{acro:ORB} was used to detect objects in architectural floor plans. It is similar to the two other feature matching algorithms like SIFT or SURF. This algorithm is orientation and size invariant which is really important as object size may differ from plan to plan and orientation might even differ within one plan.
+
+The algorithm itself consists of two algorithms FAST and BRIEF. The FAST algorithm is for finding keypoints in images that match visual features. FAST keypoints are detected with an intensity threshold between a center pixel and the pixels in a circular ring around the center. To select the best keypoints, \acrshort{acro:ORB} employs a Harris corner measure (algorithm described in \ref{subsubsec:HarrisCornerDetection}) to find the best $N$ keypoints. Since FAST keypoints have no rotational awareness, \acrshort{acro:ORB} introduces the orientation by intensity centroid. The intensity centroid $C$ \eqref{eq:IntesityCentroid}
+
+\begin{equation}\label{eq:IntesityCentroid} C = \begin{pmatrix}
+\frac{m_{10}}{m_{00}},\frac{m_{1}}{m_{00}}\end{pmatrix} \end{equation}
+
+is defined by the moments in equation \eqref{eq:MomentsIntesityCentroid}
+
+\begin{equation}\label{eq:MomentsIntesityCentroid} m_{pq} = \sum_{x,y} x^p y^q I(x,y)\end{equation}
+
+To find the orientation $\theta$ \eqref{eq:OrientationORB}, the algorithm constructs a vector from the corners center $O$ to the centroid $OC$.
+
+\begin{equation}\label{eq:OrientationORB} \theta = atan2(m_{01},m_10)\end{equation}
+
+Here atan2 is the quadrant aware version of the arcus tangens.
+
+To compare those keypoints to others the algorithm needs the BRIEF descriptor. It does binary tests on patches of the image. The binary test $\tau$ \eqref{eq:BinaryTest},is defined by the equation:
+
+\begin{equation}\label{eq:BinaryTest} \tau(p;x,y) := \begin{cases} 1 :p(x) < p(y) \\ 0 :p(x) \geq p(y)\end{cases}\end{equation}
+
+where $p(x)$ is the intensity of $p$ at point x. A feature \eqref{eq:BinaryFeature} to compare the keypoints together is defined as a vector of binary tests: 
+
+\begin{equation}\label{eq:BinaryFeature} f_{n}(p) := \sum_{1 \leq i \leq n}2^{i-1} \tau(p;x,y)\end{equation}
+
+To allow BRIEF to be rotation invariant, the descriptor \eqref{eq:BriefDescriptor} will be orientated to the orientation of keypoints. The rotation will be defined by the patch orientation $\theta$ and the rotation matrix $R_{\theta}$ to be $S_{\theta} = R_{\theta}S$.
+This orientated BRIEF descriptor is now defined as
+\begin{equation}\label{eq:BriefDescriptor} g_{n}(p,\theta) := f_{n}(p)|(x_{i},y_{i}) \in S_{\theta}\end{equation}
+
+\acrshort{acro:ORB} creates a matcher that is used to compare the trained features with the features of a target image. If any of those features match the algorithm has likely found the object of the first image in the second image and will return its coordinates \citep{rublee_rabaud_konolige_bradski_2011}.
+
+\subsubsection{Cascade training}
+\label{sub:CascadeTraining}
+The algorithm used for object detection in this project was first described by Paul Viola in his paper Rapid Object Detection using a Boosted Cascade of Simple Features \citep{viola_jones_2001}. It is based on three key components. One is the \textit{Integral Image} which is an image representation that allows to detect features very quickly. A second component is the learning algorithm, \textit{AdaBoost}, which selects a small number of critical features from a big set. The last component is an algorithm that combines increasingly complex features in a cascade. All of these components provide the basis for a really fast feature detection, compared to previously known algorithms.
+
+The object detection for this method is based on features and not pixels. Features can provide additional domain knowledge that would not be know with just pixels. Additionally, the detection based on features, is processed much faster than a pixel based system. The algorithm uses three different simple features based on the \textit{Haar} basis functions. The value of a two-rectangle feature is the difference of the sum of two regions that are vertically or horizontally adjacent and have the same measurements (see Figure~\ref{fig:rectFeat}). The three-rectangle feature has the same conditions, but the value is based on the sum of two outside rectangles and subtracted the sum of a center rectangle. Last is the four-rectangle features, which the value is the difference of sums of diagonal pairs of rectangles.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.4\textwidth]{rectangleFeatures.jpg}
+	\caption{Rectangle features in a detection window. There are two-rectangle ($A$ and $B$), three-rectangle ($C$) and four-rectangle features in use.}
+	\label{fig:rectFeat}
+\end{figure}
+
+All features combined are more than 180'000 while the detector has a base resolution of 24x24. This means the rectangle features are over complete.
+These rectangle features are computed using the representation "integral image". In an integral, every pixel is a sum of pixels of the original image that are above and to the left:
+\begin{equation}ii(x,y) = \sum_{x'\leq x, y'\leq y} i(x',y')\end{equation}
+where ii(x,y) is the integral image and i(x,y) the original. Using two conditions with s(x,y) as the row sum:
+\begin{equation}s(x,y) = s(x,y-1)+i(x,y)\end{equation}
+\begin{equation}ii(x,y) = ii(x-1,y)+s(x,y)\end{equation}
+the whole image can be computed in one pass.
+This method helps so we can now compute two-rectangular features from just 6 values instead of having to do all the calculations for the sums each time over whole regions. In addition, three-rectangular features only take 8, and four-rectangular only 9 values to calculate its value. This algorithm can only recognize features in vertical, horizontal or diagonal direction due to the nature of our rectangle features.
+To train and select a small size of features this algorithm uses the \textit{AdaBoost} method. The basic idea is that there is a feature size over 180'000 features to determine if an object is recognized or not. The job of this \textit{AdaBoost} is to reduce the amount of features down to a basic set of features that still has a high recognition rate. For each feature, the algorithm determines the optimal threshold classification function so that the least amount of examples are misclassified.
+To achieve an improved detection rate and drastically reduce the computation time, this algorithm implements a cascade function. This means that the detection process is that of a degenerate decision tree. A positive result from a classifier triggers the evaluation of the next classifier. If at any point the result is negative, the algorithm immediately declares the result as negative and will not be computed any further. The idea is that the first layer rules out a large amount of possibilities with very little computation time. Further stages of the process will reduce further negatives but need additional computation power. The idea behind this process, is that in an image most sub-windows will be negative and such should be rejected as early as possible in the cascade process to require fewer computational effort.
+The classifier is trained with a training set of positives and negatives. Each stage is trained by adding features until the target detection and false positive rates are met. Stages are added until the overall target for false positive rate and detection rate is met. In the end there is always a balance between finding high detection rates with low false positive rates, and lower time for computation.
+
+\subsubsection{Template Matching}
+\label{sub:TemplateMatching}
+To find a template $T$ (Figure~\ref{fig:door_template}) in a given image $I$ (Figure~\ref{fig:A_N1_cleaned}), it is possible to use template matching. The algorithm slides the template $T$, pixel by pixel over the original image $I$ and stores the metric of the current pixel, in the correlation image $R$.
+
+There are various kinds of formulas to calculate the matching metric. Usually the formula sums up the matching pixels in the template $T$ and the image $I$ and stores the result as a color value, in the correlation image $R$.
+
+\begin{figure}[H]
+	\centering
+	\subfloat[Template $T$]{\includegraphics[width=0.15\textwidth]{door_template}\label{fig:door_template}}
+	\hfill
+	\subfloat[Image $I$]{\includegraphics[width=0.4\textwidth]{A_N1_cleaned}\label{fig:A_N1_cleaned}}
+	\hfill
+	\subfloat[Correlation matrix $R$]{\includegraphics[width=0.4\textwidth]{tm_correlation_matrix}\label{fig:tm_correlation_matrix}}
+	\caption{Template matching example. The red rectangle in \ref{fig:tm_correlation_matrix} indicates the brightest location.}
+	\label{fig:TemplateMatchingExample}
+\end{figure}
+
+
+The brightest points in the correlation image $R$ (Figure~\ref{fig:tm_correlation_matrix})  indicate the highest matches. If multiple occurrences of an object should be detected, it is possible to use a threshold on the correlation matrix $R$ to detect all the correlated locations.
+
+Template matching is a very simple matching method and is not rotation and scale invariant.
+
+\pagebreak
+\subsection{Semantic Analysis}
+\subsubsection{Hough transformation}
+\label{subsubsec:Hough transformation}
+The hough transformation was used as an alternative to the current process to find walls, and therefore the rooms. In the implementation it will be explained why this was not implemented in the final project.
+
+The hough transformation is a general approach to find forms like lines or circles in images. This section will discuss how to detect lines in an image.
+Any line can be represented as $r = x \cos \theta + y \sin \theta$ which is the \textit{Hessesche Normalenform}. The parameter $r$ represents the distance from the origin, in an image the bottom left, to the closest point on a straight line that goes through $(x,y)$. The angle $\theta$ represents the angle between the x-axis and the line we used for our parameter $r$. Any possible straight line that can go through the image can be represented by those parameters. The plane of $(r,\theta)$ is called the Hough space for straight lines.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.4\textwidth]{hough_gerade}
+	\caption{This is an example image of a hough-line with the distance $r$ and the angle $\theta$. It represents the hough line $r = x \cos \theta + y \sin \theta$.}
+	\label{fig:hough_line}
+\end{figure}
+
+The algorithm now uses a two dimensional array called accumulator to detect the existence of a straight line. The algorithm then determines for each pixel and its neighbourhood if there is a possibility for a line and then increments the value in the accumulator for the representative $(r,\theta)$ values. When done for all pixels on the image, there will be local maxima for $(r,\theta)$ values in the accumulator. Those maxima are most likely to represent a straight line in the actual image.  
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.5\textwidth]{hough_accumulator}
+	\caption{The image on the left side represents an image with lines and some noise on it. The right image represents the Hough plane (accumulator) with local maxima, which are highlighted as white pixels.}
+	\label{fig:hough_accumulator}
+\end{figure}
+
+To find the actual length of the lines, there has to be a further algorithm that checks where on the found, the lines of the image correspond. This can done in several ways and therefore will not be explained here. There are several algorithms described on the internet, or for example in the book \textit{Digital image processing: an algorithmic introduction using Java} \citep{burger_burge_2016}.
+
+\subsubsection{Connected Component Analysis}
+\label{sub:ConnectedComponentAnalysis}
+Finding connected components is a common way to detect objects in a thresholded image. In this work it is used to detect connected room pixels and calculate the size of each room out of it.
+
+This is accomplished by finding pixels which are adjacent to each other. A pixel is adjacent to another pixel if it is immediate $\mathcal{N}_4$ or $\mathcal{N}_8$ and has the same scalar value. Further the neighbour pixels are labeled with the same label, and in the end combined to a region $\mathcal{R}$ \citep[Section 3.3.4]{szeliski_2011}.
+
+\begin{figure}[H]
+	\centering
+	\subfloat[4-neighbourhood, $\mathcal{N}_4$]{\includegraphics[width=0.2\textwidth]{n4_pixel}\label{fig:n4_pixel}}
+	\hfill
+	\subfloat[8-neighbourhood, $\mathcal{N}_8$]{\includegraphics[width=0.2\textwidth]{n8_pixel}\label{fig:n8_pixel}}
+	\caption{Pixel neighbourhoods.}
+	\label{fig:pixel_neighbourhood}
+\end{figure}
+
+The distance $\mathcal{N}_4$ and $\mathcal{N}_8$ refers to the distance between two pixels (Figure~\ref{fig:pixel_neighbourhood}). In $\mathcal{N}_4$ only the four pixels (top, left, bottom, right) are used to determine if two pixels are connected. In $\mathcal{N}_8$ all pixels around the pixel are included into the process \citep{burger_burge_2016}.
+
+For each region $\mathcal{R}$ it is possible to compute statistics, like the area (number of pixels) or the perimeter (number of boundary pixels) \citep[Section 3.3.4]{szeliski_2011}. These statistics are used for example, to determine the actual room size.
+
+\subsubsection{Watershed}
+\label{subsub:watershed}
+The watershed-algorithm in our project is used for segmentation of the different rooms. It can find rooms, indifferent of their shape.
+\\
+The algorithm is processed on a gray-scale image on which the color intensity is analogous to the height in a height map. The watershed in use does flooding. The idea is to place a water source in each regional minimum and flood the entire relief. It will stop if it meets a different water source or an impassable barrier.
+
+The basic algorithm uses three different markings for all regions. The values I for each region can be:
+\begin{equation}I(u,v) = \begin{cases} 0 & background \\  255 & foreground \\ 1..254 & regions \end{cases} \end{equation}
+
+It is a really simple algorithm which starts with looking for an unmarked foreground pixel. All pixels of the region that are connected to this starting pixel will be visited and marked. There are three different ways to do this process. It can be a recursive, an iterative depth-first or breadth-first flood filling. It is not clear what implementation OpenCv uses. In the end, all of the methods lead to a similar result and thus will not be discussed further. 
+

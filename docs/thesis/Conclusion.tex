@@ -1,0 +1,33 @@
+\section{Conclusion}
+\subsection{Extensions}
+In this topic we discuss what additional measures can be taken to improve and extend this program. It will also show what the preparations were to provide an easy implementation for future extensions.
+
+\subsubsection{Object detection}
+\label{sub:FutureObjectDetection}
+As of now, only doors are being matched with the cascade classifier. There are several objects that could further be identified. Those objects are showers, toilets, baths, windows and different sorts of closets.
+There was a trial to identify windows with the cascade classifier already. But for the case of windows it is near impossible to find a good classifier. Most of the plans provided have a different structure or a different symbol and sometimes they are even marked differently within the same plan. But with the other objects this should be possible. Those objects would help remove noise on the initial plan as they would be removed after their detection. Additionally, these object define different zones, as described in section~\ref{sub:ZoneDetection}. To provide a head start for future work on this project, there are trained cascade files for each of those objects. Additionally, the class that implements the cascade classifier in this project can reference a cascade file and discover the object trained. Therefore, all steps to detect the objects are already provided. It is the implementation in a workflow and the usage to define zones, that are not yet implemented and need work. In our opinion, implementing this additional detection will make detecting the walls easier, as there is less noise and also will improve the room detection as a direct result of that.
+
+\subsubsection{Zone detection}
+\label{sub:RoomZones}
+\label{sub:ZoneDetection}
+The zone detection was originally one of the goals for this project. As there was not enough time, we provided a lot of work to make it easily implementable for a future project. As described in the object detection~\ref{sub:FutureObjectDetection}, these zones are defined by different objects.
+There are three different zones:
+\begin{table}[H]
+	\centering
+	\label{tab:Zones}
+	\begin{tabular}{@{}lll@{}}
+		"Blindflächen" & This zone consists of elements like showers, baths and small \\
+		& walls that are an extension to the real wall.\\
+		"Randzonen" &  This zone is connected to all windows on the outside of a house. \\
+		"Stellflächen" & This zone consists of kitchen combinations and closets.\\
+	\end{tabular}
+\end{table}	
+
+The reason different zones exist, are that there will be a different density of heating tubes or none at all under those different zones. The idea is, that each room is split into these zones and the zones are returned in addition to the room polygon. The big problem with this addition is, that windows are difficult to detect and therefore the "Randzone" is hard to detect without a heuristic. The current solution to window closing~\ref{sub:WallClosing} could be extended to find empty spaces inbetween the walls and then define the gaps as their location. This can be a solution, but it is subject to difficult structures on the outside wall (like balcony's etc.) and special constructs in the outer walls. Basically even a big white space in a wall could possibly result in a gap and would then be recognized as a window. Therefore, if there is a possibility to standardize the symbol for a window and then detect it with our cascade classifier, this detection would be a lot smoother.
+
+\subsubsection{3D-plan}
+An idea, that was mentioned by the Planfabrik GmbH at the start of the project was, that with object detection 2D-plans could automatically be transformed into 3D-plans. This idea could be implemented with some elements used in this work. Specifically the object detection could be used to detect all elements that are available on the floor plans. When recognized, a 3D-plan could be created with some additional information about the size of these objects. The challenge with this problem will be, that there is no standardization for objects like walls or any others within a floor plan itself. Therefore, it is very unlikely that an automated detection would work within this environment. A good 3D-plan creation will first need a guideline of how object symbols are to be drawn and architects would have to follow it.
+
+
+\subsection{Acknowledgment}
+We would like to thank both the Planfabrik GmbH and the University of Applied Sciences and Arts Northwestern Switzerland, for the possibility to work on such an interesting problem. More specifically, we would like to thank Oliver and Patrick Stalder for their great support and their insight which their work provided. They both were very supportive and always very interested, which made them a pleasure to work with. Additionally, we would like to thank Prof. Dr. Simon Schubiger as our coach, for his guidance and all the ideas we were able to discuss with him. We are very thankful for his continued support and all of his advice!

@@ -1,0 +1,148 @@
+\documentclass[11pt, a4paper]{report}
+
+\usepackage{glossaries}
+\loadglsentries{Glossary}
+\makeglossaries
+
+\usepackage{etoolbox}
+\patchcmd{\chapter}{\thispagestyle{plain}}{\thispagestyle{fancy}}{}{}
+\renewcommand{\thesection}{\arabic{section}}
+
+\usepackage[utf8]{inputenc}
+\usepackage[dvipsnames]{xcolor}
+
+\usepackage[bottom=1in,top=1.5in,headsep=0.55in]{geometry}
+
+\usepackage{txfonts}
+\usepackage{pdflscape}
+\usepackage{todonotes}
+\usepackage{float}
+
+\usepackage{titlesec}
+\titleformat{\chapter}[frame]{}{\thechapter}{0pt}{}
+\titlespacing*{\chapter}{0cm}{-\topskip}{0pt}[0pt]
+\titleformat{\chapter}{\normalfont\huge\bf}{\thechapter.}{20pt}{\huge\bf}
+
+\setcounter{secnumdepth}{4}
+
+\titleformat{\paragraph}
+{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+\titlespacing*{\paragraph}
+{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+
+\usepackage{graphicx}
+\usepackage[english]{babel}
+\graphicspath{ {images/} }
+\usepackage{amsmath}
+\usepackage{subscript} 
+\usepackage{enumitem}
+\usepackage{subfig}
+
+\usepackage{mathtools}
+\usepackage{amsmath}
+
+\usepackage{listings}
+\usepackage{booktabs}
+
+\usepackage{booktabs}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\lhead{\hspace*{-0.7cm}\includegraphics[width=7cm]{fhnw}}
+\rhead{}
+
+\usepackage{tabularx}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\usepackage{parskip}
+
+\usepackage[round]{natbib}
+\bibliographystyle{plainnat}
+
+\usepackage{color}
+
+\newcommand*{\Signatures}[2]{%
+	\par\noindent\makebox[1.5in]{Location, Date, Signature}
+	\hfill\makebox[1.5in]{Location, Date, Signature}
+	\hfill\makebox[0.5in]{}%
+	\vspace{0.7in}
+	\par\noindent\makebox[1.5in]{\hrulefill}
+	\hfill\makebox[1.5in]{\hrulefill}
+	\hfill\makebox[0.5in]{}%
+	\par\noindent\makebox[1.5in][l]{#1}      \hfill\makebox[1.5in][l]{#2}
+	\hfill\makebox[0.5in]{}%
+}%
+
+\lstset{
+basicstyle=\scriptsize\sffamily\color{black},
+frame=single,
+numbers=left,
+numbersep=5pt,
+numberstyle=\tiny\color{gray},
+showspaces=false,
+showstringspaces=false,
+tabsize=1
+}
+
+\lstdefinelanguage{Kotlin}{
+  keywords={package, as, typealias, this, super, val, var, fun, for, null, true, false, is, in, throw, return, break, continue, object, if, try, else, while, do, when, yield, typeof, yield, typeof, class, interface, enum, object, override, public, private, get, set, import, abstract, },
+  keywordstyle=\color{NavyBlue}\bfseries,
+  ndkeywords={@Deprecated, Iterable, Int, Integer, Float, Double, String, Runnable, dynamic},
+  ndkeywordstyle=\color{BurntOrange}\bfseries,
+  emph={println, return@, forEach,},
+  emphstyle={\color{OrangeRed}},
+  identifierstyle=\color{black},
+  sensitive=true,
+  commentstyle=\color{gray}\ttfamily,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  stringstyle=\color{ForestGreen}\ttfamily,
+  morestring=[b]",
+  morestring=[s]{"""*}{*"""},
+}
+
+\lstdefinelanguage{XML}
+{
+  morestring=[b]",
+  morestring=[s]{>}{<},
+  morecomment=[s]{<?}{?>},
+  stringstyle=\color{ForestGreen},
+  identifierstyle=\color{NavyBlue},
+  keywordstyle=\color{OrangeRed},
+  morekeywords={xmlns,version,type,onAction,text,orientation}
+}
+
+\begin{document}
+	\title{\textbf{Bachelor Thesis \\ - \\Automatic analysis and simplification of architectural floor plans}}
+	\author{
+			\begin{tabular}{l  l}
+				Principals: & PlanFabrik GmbH \\
+				Authors: & Alexander Wyss, Florian Bruggisser \\
+				Supervising Prof.: & Prof. Dr. Simon Schubiger, Prof. Dr. Stefan Arisona \\ University: & FHNW Technik \\
+				Email: & alexander.wyss@students.fhnw.ch \\ & florian.bruggisser@students.fhnw.ch				
+			\end{tabular}
+	}
+	
+\maketitle
+
+\include{Abstract}
+
+\tableofcontents
+	
+\include{Introduction}
+\include{Architecture}
+\include{Implementation}
+\include{Theory}
+\include{Result}
+\include{Conclusion}
+\include{Annex}
+\bibliography{quotations}
+\include{AuthenticityAgreement}
+
+\clearpage
+\printglossary
+
+\clearpage
+\listoffigures
+
+\end{document}

@@ -1,0 +1,47 @@
+\documentclass[11pt, a4paper]{report}
+
+\usepackage{etoolbox}
+\patchcmd{\chapter}{\thispagestyle{plain}}{\thispagestyle{fancy}}{}{}
+
+\usepackage[utf8]{inputenc}
+\usepackage{txfonts}
+\usepackage{pdflscape}
+
+\usepackage{titlesec}
+\titleformat{\chapter}[frame]{}{\thechapter}{0pt}{}
+\titlespacing*{\chapter}{0cm}{-\topskip}{0pt}[0pt]
+\titleformat{\chapter}{\normalfont\huge\bf}{\thechapter.}{20pt}{\huge\bf}
+
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\lhead{\includegraphics[width=7cm]{fhnw}}
+\rhead{}
+
+\usepackage{tabularx}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\begin{document}
+	\title{\textbf{Project agreement \\ - \\Analysis and simplification of architectural floor plans}}
+	\author{
+			\begin{tabular}{l  l}
+				Principals: & PlanFabrik GmbH \\
+				Authors: & Alexander Wyss, Florian Bruggisser \\
+				Supervising Prof.: & Simon Schubiger, Stefan Arisona \\ University: & FHNW Technik \\
+				Email: & alexander.wyss@students.fhnw.ch \\ & florian.bruggisser@students.fhnw.ch				
+			\end{tabular}
+	}
+	
+	\maketitle
+	\tableofcontents
+	
+	\include{Stakeholder}
+	\include{Introduction}
+	\include{Requirements}
+	\include{Timetable}
+	\include{Agreement}
+	\include{Attachements}
+	
+\end{document}
